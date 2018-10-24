@@ -1,0 +1,17 @@
+{
+  "name": "lotion-peer-economy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "author": "Sage Franch",
+  "license": "ISC",
+  "dependencies": {
+    "lotion": "^0.2.3",
+    "npm": "^6.4.1"
+  }
+}
