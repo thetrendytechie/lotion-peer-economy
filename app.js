@@ -64,6 +64,7 @@ async function main() {
 		let username;
 		var infoComplete = false;
 		var serviceFlag = false;
+		var claimFlag = false;
 		let service;
 		let hours;
 
@@ -90,6 +91,7 @@ async function main() {
 				displayBoard();
 				rl.setPrompt('Enter "Claim" to claim a service, or "Exit" to go back > ');
 			}else if (line == 'Claim'){
+				claimFlag = true;
 				rl.setPrompt('Enter the number of the service you would like to claim > ');
 			}else if (line == 'Exit'){
 				serviceFlag = false;
@@ -100,6 +102,8 @@ async function main() {
 					service = line;
 					serviceFlag = false;
 					rl.setPrompt('# Hours Offered > ');
+				}else if(claimFlag){
+					claimOffer(line);
 				}else{
 					hours = line;
 					infoComplete = true;
@@ -109,19 +113,7 @@ async function main() {
 			if(infoComplete){
 				rl.setPrompt('Enter "Offer" to offer a service, or "Browse" to see current available offers \n> ');
 
-				let result = await axios({
-					url: 'http://localhost:' + port + '/txs',
-					method: 'post',
-					params: {
-					return_state: true
-					},
-					data: {
-					poster: username,
-					service: service,
-					hours: hours,
-					claimed: false
-					}
-				});
+				postOffer(username, service, hours, false);
 				//   console.log('Result: ', result);
 				infoComplete = false;
 				updateState(result.data.state);
@@ -131,7 +123,7 @@ async function main() {
 		});
 			
 		setInterval(async () => {
-		let { data } = await axios.get('http://localhost:' + port + '/state');
+		let { data } = await getState();
 		updateState(data);
 		}, 500);
 	});
@@ -150,16 +142,20 @@ function usernameError(name) {
 	return false;
 }
 
-async function updateState(state) {
-	for (let i = lastOffersLength; i < state.offers.length; i++) {
-	  	displaySingleService(state.offers[i], i);
+async function getState(){
+	return axios.get('http://localhost:' + port + '/state');
+}
+
+async function updateState(data) {
+	for (let i = lastOffersLength; i < data.offers.length; i++) {
+	  	displaySingleService(data.offers[i], i);
 	}
-	lastOffersLength = state.offers.length;
+	lastOffersLength = data.offers.length;
 }
 
 function displaySingleService({ poster, service, hours, claimed }, index) {
 
-	let bar = '=================================================================';
+	let bar = '====================================================================';
   	let link = '                                |                                ';
 
     readline.clearLine(process.stdout, 0);
@@ -167,7 +163,7 @@ function displaySingleService({ poster, service, hours, claimed }, index) {
 
     if (claimed == false) {
 		console.log(bar);
-		console.log('|  ' + poster + leftPad(': ', 12 - poster.length) + service + ' for ' + hours + ' hours' + leftPad('|', 50 - (service.length + 12)));
+		console.log('|  ' + (index + 1) + ': ' + poster + leftPad('- ', 12 - poster.length) + service + ' for ' + hours + ' hours' + leftPad('|', 50 - (service.length + 12)));
 		console.log(bar);
 		console.log(link);
 		console.log(link);
@@ -176,12 +172,44 @@ function displaySingleService({ poster, service, hours, claimed }, index) {
 }
 
 function displayBoard(){
-	axios.get('http://localhost:' + port + '/state').then((res) => {
+	getState().then((res) => {
 		// console.log('displayBoard: ', res.data.offers);
 		for (let i = 0; i < res.data.offers.length; i++) {
 			displaySingleService(res.data.offers[i], i);
 	 	 }
 	});
 }
+
+async function postOffer(username, service, hours, claimed){
+	return axios({
+		url: 'http://localhost:' + port + '/txs',
+		method: 'post',
+		params: {
+			return_state: true
+		},
+		data: {
+			poster: username,
+			service: service,
+			hours: hours,
+			claimed: claimed
+		}
+	});
+}
+
+async function claimOffer(index){
+	index -= 1;
+	let updatedItem;
+	//get all offers
+	getState().then((state) => {
+		//pick the right one and update state
+		let offer = state.data.offers[index];
+		console.log('this is the state', state.data.offers[index])
+		postOffer(offer.poster, offer.service, offer.hours, true).then((result) => {
+			updateState(result.data.state);
+		});
+	});
+}
+
+
 
 main();
